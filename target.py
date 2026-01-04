@@ -27,4 +27,4 @@ class Target:
         self.steering_input = direction
 
     def get_state(self):
-        return self.pos.copy(), self.vel.copy()
+        return self.pos, self.vel
