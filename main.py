@@ -6,7 +6,7 @@ from target import Target
 
 dt = 0.005
 min_dist = float('inf')
-objetivo = Target(x=1000, y=4000, speed=400, heading=30)
+objetivo = Target(x=6000, y=6000, speed=400, heading=30)
 misil = Missile(x=0, y=0, speed=1205, heading=45, N=5, target=objetivo, dt=dt)
 
 fig, ax = plt.subplots(figsize=(10, 7))
@@ -64,7 +64,6 @@ def update(frame):
         text_info.set_text("¡DERRIBADO!")
         ani.event_source.stop()
         print(min_dist)
-        exit()
         
     return line_target, line_missile, point_target, point_missile, text_info
 
