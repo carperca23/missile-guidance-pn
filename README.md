@@ -1,183 +1,180 @@
-# Simulador de Guiado de Misiles con Navegación Proporcional
+# 🚀 Simulador de Guiado de Misiles con APN
 
-Un simulador interactivo en Python que implementa un sistema de guiado de misiles utilizando el algoritmo de **Navegación Proporcional (Proportional Navigation)** para interceptar un objetivo móvil que puedes controlar en tiempo real.
+Simulación interactiva en tiempo real de un sistema de guiado de misiles utilizando **Augmented Proportional Navigation (APN)** con filtrado Extended Kalman Filter (EKF) para estimación de estado del objetivo.
 
-## Descripción
+##  Descripción
 
-Este proyecto simula el comportamiento de un misil que persigue un objetivo (avión) utilizando uno de los algoritmos de guiado más utilizados en sistemas de defensa reales. Puedes controlar el objetivo con las flechas del teclado para intentar evadir el misil.
+Este proyecto simula un escenario de interceptación donde un misil debe derribar un avión objetivo maniobrable. El sistema implementa técnicas avanzadas de guiado utilizadas en misiles reales:
 
-## Características
+- **APN (Augmented Proportional Navigation)**: Ley de guiado que anticipa las maniobras del objetivo
+- **EKF (Extended Kalman Filter)**: Estimación óptima de posición, velocidad y aceleración del objetivo
+- **Radar con ruido realista**: Mediciones imperfectas con errores en rango y azimut
+- **Control interactivo**: El jugador controla el avión objetivo intentando evadir el misil
 
--  Control interactivo del objetivo con teclado
--  Guiado de misil con algoritmo de Navegación Proporcional
--  Visualización en tiempo real de trayectorias
--  Detección de impacto
--  Restricciones físicas realistas (límites de aceleración)
+##  Características
 
-## Requisitos
+- Simulación física realista con límites de maniobra (g's)
+- Radar montado en el misil con tasa de escaneo configurable (20 Hz)
+- Visualización en tiempo real de trayectorias
+- Control interactivo del objetivo con teclado
+- Métricas de rendimiento (distancia mínima de aproximación)
+
+##  Requisitos
 
 ```bash
 pip install numpy matplotlib
 ```
 
-## Uso
+##  Uso
 
 ```bash
 python main.py
 ```
 
-**Controles:**
-- `←` Flecha izquierda: Girar a la izquierda
-- `→` Flecha derecha: Girar a la derecha
+### Controles
 
-## Estructura del Proyecto
+- **← Flecha Izquierda**: Girar el avión a la izquierda
+- **→ Flecha Derecha**: Girar el avión a la derecha
+- **Soltar tecla**: Volar recto
 
-```
-├── main.py          # Programa principal con visualización
-├── missile.py       # Clase del misil
-├── target.py        # Clase del objetivo (avión)
-└── pn.py           # Implementación de Navegación Proporcional
-```
+### Objetivo del Juego
 
-## Fundamentos Matemáticos
+**Como jugador (avión rojo)**: Evitar ser derribado realizando maniobras evasivas.
 
-### Navegación Proporcional (PN)
+**Victoria**: Hacer que el misil falle (distancia mínima > 10m)
 
-La Navegación Proporcional es un algoritmo de guiado donde la aceleración lateral del misil es proporcional a la tasa de rotación de la línea de visión (Line of Sight, LOS) entre el misil y el objetivo.
+**Derrota**: El misil te alcanza (distancia < 10m)
 
-#### Comando de Guiado
-
-La aceleración normal requerida se calcula como:
+##  Estructura del Proyecto
 
 ```
-aₙ = N · Vс · λ̇
+├── main.py          # Loop principal y visualización
+├── missile.py       # Clase del misil con integración de sistemas
+├── target.py        # Clase del avión objetivo con física de vuelo
+├── apn.py           # Implementación del algoritmo APN
+├── ekf.py           # Filtro de Kalman Extendido
+└── radar.py         # Simulación de sensor radar
 ```
 
-Donde:
-- `aₙ` = Aceleración normal (perpendicular a la velocidad del misil)
-- `N` = Constante de navegación (típicamente 3-5)
-- `Vс` = Velocidad de cierre (closing velocity)
-- `λ̇` = Tasa de rotación de la línea de visión
+##  Algoritmos Implementados
 
-#### Velocidad de Cierre
+### Augmented Proportional Navigation (APN)
 
-La velocidad de cierre se define como la tasa a la que disminuye la distancia entre el misil y el objetivo:
+La ley de guiado APN genera comandos de aceleración perpendicular a la línea de visión (LOS):
 
 ```
-Vс = -(Vₜ - Vₘ) · R̂
+a_n = N × V_c × λ̇ + (N/2) × a_t⊥
 ```
 
 Donde:
-- `Vₜ` = Vector velocidad del objetivo
-- `Vₘ` = Vector velocidad del misil
-- `R̂` = Vector unitario de la línea de visión: `R̂ = R / |R|`
-- `R` = Vector posición relativa: `R = Pₜ - Pₘ`
+- `N`: Constante de navegación (N=5)
+- `V_c`: Velocidad de cierre
+- `λ̇`: Tasa de rotación de la LOS
+- `a_t⊥`: Aceleración del objetivo perpendicular a la LOS
 
-#### Ángulo de la Línea de Visión (LOS)
+**Ventaja sobre PN clásico**: El término adicional `(N/2) × a_t⊥` permite anticipar maniobras del objetivo, reduciendo drásticamente el "miss distance".
 
-El ángulo λ se calcula como:
+### Extended Kalman Filter (EKF)
 
-```
-λ = arctan2(Ry, Rx)
-```
+Estima el estado del objetivo a partir de mediciones ruidosas del radar:
 
-Donde `Rx` y `Ry` son las componentes del vector de posición relativa.
+**Vector de estado**: `[x, y, vx, vy, ax, ay]`
 
-#### Tasa de Rotación de la LOS
+**Modelo de proceso**: Aceleración constante con ruido
 
-La tasa de rotación se aproxima numéricamente:
+**Mediciones**: Rango y azimut relativos al misil
 
-```
-λ̇ = Δλ / Δt
-```
+El EKF realiza dos pasos por cada ciclo:
+1. **Predicción**: Propaga el estado usando el modelo dinámico
+2. **Actualización**: Corrige la estimación con nuevas mediciones
 
-Con normalización para evitar discontinuidades:
+##  Parámetros Configurables
 
-```
-Si Δλ > π:  Δλ = Δλ - 2π
-Si Δλ < -π: Δλ = Δλ + 2π
-```
-
-### Dinámica del Misil
-
-#### Actualización del Rumbo
-
-```
-θ(t+Δt) = θ(t) + (aₙ/V) · Δt
-```
-
-Donde:
-- `θ` = Ángulo de rumbo (heading)
-- `V` = Velocidad del misil (constante)
-- `aₙ` = Aceleración normal (limitada a ±70g)
-
-#### Actualización de Velocidad y Posición
-
-```
-Vₓ = V · cos(θ)
-Vᵧ = V · sin(θ)
-
-x(t+Δt) = x(t) + Vₓ · Δt
-y(t+Δt) = y(t) + Vᵧ · Δt
+### En `main.py`:
+```python
+dt = 0.005                    # Paso de integración (s)
+objetivo = Target(
+    x=1000,                   # Posición inicial X (m)
+    y=4000,                   # Posición inicial Y (m)
+    speed=400,                # Velocidad del objetivo (m/s)
+    heading=30                # Rumbo inicial (grados)
+)
+misil = Missile(
+    x=0, y=0,                 # Posición inicial (origen)
+    speed=1205,               # Velocidad del misil (m/s)
+    heading=45,               # Rumbo inicial (grados)
+    N=5                       # Constante de navegación APN
+)
 ```
 
-### Dinámica del Objetivo
-
-El objetivo puede realizar maniobras de evasión con un límite de 9g:
-
-```
-ω_max = (g_max · g) / V
-```
-
-Donde:
-- `ω_max` = Tasa máxima de giro
-- `g_max` = Factor de carga máximo (9g)
-- `g` = Aceleración gravitacional (9.81 m/s²)
-- `V` = Velocidad del objetivo
-
-```
-θ(t+Δt) = θ(t) + ω · Δt
+### En `radar.py`:
+```python
+scan_rate = 20.0              # Frecuencia de escaneo (Hz)
+sigma_range = 15.0            # Error en rango (m)
+sigma_azimuth = 0.5           # Error en azimut (grados)
 ```
 
-## Parámetros de Simulación
-
-### Configuración Inicial
-
-| Parámetro | Misil | Objetivo |
-|-----------|-------|----------|
-| Posición inicial | (0, 0) | (5000, 3000) m |
-| Velocidad | 320 m/s | 200 m/s |
-| Rumbo inicial | 45° | 30° |
-| Aceleración máxima | 30g | 9g |
-| Constante N | 3 | - |
-
-### Condición de Impacto
-
-El impacto se detecta cuando:
-
-```
-|R| = √[(xₜ - xₘ)² + (yₜ - yₘ)²] < 5 metros
+### En `target.py`:
+```python
+max_g = 9.0                   # Máximo factor de carga (g's)
 ```
 
-## Interpretación Física
+### En `missile.py`:
+```python
+max_an = 50 * 9.81            # Máxima aceleración lateral (m/s²)
+```
 
-- **N = 3**: Guiado conservador, trayectoria suave
-- **N = 4-5**: Guiado agresivo, interceptación más directa
-- **Vс > 0**: El misil se acerca al objetivo
-- **λ̇ > 0**: La línea de visión rota en sentido antihorario
+##  Métricas de Rendimiento
 
-### Ventajas de la Navegación Proporcional
+Al finalizar la simulación, se muestra:
+- **Distancia mínima de aproximación**: Métrica clave de efectividad del guiado
+- **Resultado**: "¡DERRIBADO!" si distancia < 10m
 
-1.  Implementación simple y robusta
-2.  Bajo costo computacional
-3.  Trayectorias predecibles y eficientes
-4.  Ampliamente probado en sistemas reales
+##  Conceptos Técnicos
 
-### Limitaciones
+### PN vs APN
 
-1.  Requiere medir o estimar la velocidad del objetivo
-2.  Sensible a ruido en mediciones de λ
-3.  Puede fallar con objetivos muy maniobrables
+| Característica | PN | APN |
+|----------------|----|----|
+| Contra objetivos no maniobrados | Óptimo | Igual |
+| Contra objetivos maniobrados | Reactivo | Predictivo |
+| Miss distance típico | Mayor | Menor |
+| Complejidad | Baja | Media |
+| Requisitos de sensor | Pos + Vel | Pos + Vel + Acel |
+
+### Ventajas del Radar Montado en el Misil
+
+- Mediciones relativas reales (no desde origen fijo)
+- Error angular menos crítico al acercarse
+- Convergencia del EKF con el tiempo
+- Más realista para simulación táctica
+
+### Limitaciones del Modelo Actual
+
+- Velocidad del misil constante (no considera consumo de combustible)
+- Modelo de aceleración constante en EKF (objetivos reales son más complejos)
+- No hay pérdida de energía del objetivo en giros
+- Atmósfera idealizada (sin resistencia del aire variable)
+
+##  Estrategias de Evasión
+
+Para el jugador que controla el objetivo:
+
+1. **Maniobras tempranas**: Cambios de dirección cuando el misil está lejos
+2. **Giros sostenidos**: Fuerzas al misil a altas aceleraciones laterales
+3. **Cambios de sentido**: Alternar izquierda/derecha para confundir predicción
+4. **Timing**: Aprovechar el retardo entre mediciones del radar (50ms)
 
 
-**¡Intenta evadir el misil!**
+##  Contribuciones
+
+Mejoras sugeridas:
+- [ ] Añadir múltiples objetivos
+- [ ] Implementar contramedidas (chaff/flares)
+- [ ] Modo de persecución pura para comparación
+- [ ] Telemetría detallada en tiempo real
+- [ ] Terreno 3D
+- [ ] Diferentes tipos de sensores (IR, óptico)
+
+
+**Nota**: Esta es una simulación simplificada con fines educativos. Los sistemas reales de guiado de misiles son significativamente más complejos.

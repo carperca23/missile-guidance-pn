@@ -4,12 +4,13 @@ from matplotlib.animation import FuncAnimation
 from missile import Missile
 from target import Target
 
-dt = 0.02
-objetivo = Target(x=5000, y=3000, speed=200, heading=30)
-misil = Missile(x=0, y=0, speed=320, heading=45, N=3, target=objetivo)
+dt = 0.005
+min_dist = float('inf')
+objetivo = Target(x=1000, y=4000, speed=400, heading=30)
+misil = Missile(x=0, y=0, speed=1205, heading=45, N=5, target=objetivo, dt=dt)
 
 fig, ax = plt.subplots(figsize=(10, 7))
-ax.set_xlim(0, 8000); ax.set_ylim(0, 6000)
+ax.set_xlim(0, 10000); ax.set_ylim(0, 10000)
 ax.set_aspect('equal')
 
 line_target, = ax.plot([], [], 'r--', alpha=0.3)
@@ -35,6 +36,8 @@ t_hist_x, t_hist_y = [], []
 m_hist_x, m_hist_y = [], []
 
 def update(frame):
+    global min_dist
+
     objetivo.update(dt)
     misil.step(dt)
     
@@ -50,11 +53,18 @@ def update(frame):
     point_missile.set_data([m_pos[0]], [m_pos[1]])
     
     dist = np.linalg.norm(t_pos - m_pos)
-    text_info.set_text(f'Usa FLECHAS para girar | Distancia: {dist:.1f}m')
+    if dist <= min_dist:
+        min_dist = dist
+    else:
+        print(min_dist)
+        exit()
+    text_info.set_text(f'Distancia: {dist:.1f}m')
     
-    if dist < 5.0:
+    if dist < 10.0:
         text_info.set_text("¡DERRIBADO!")
         ani.event_source.stop()
+        print(min_dist)
+        exit()
         
     return line_target, line_missile, point_target, point_missile, text_info
 
