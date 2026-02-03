@@ -1,7 +1,5 @@
 import numpy as np
 
-import numpy as np
-
 class Radar:
     def __init__(self, target, scan_rate=20.0):
         self.target = target

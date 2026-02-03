@@ -6,7 +6,7 @@ from target import Target
 
 dt = 0.005
 min_dist = float('inf')
-objetivo = Target(x=6000, y=6000, speed=400, heading=30)
+objetivo = Target(x=6000, y=6000, speed=400, heading=180)
 misil = Missile(x=0, y=0, speed=1205, heading=45, N=5, target=objetivo, dt=dt)
 
 fig, ax = plt.subplots(figsize=(10, 7))
